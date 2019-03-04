@@ -4,7 +4,7 @@ use warnings;
 use File::Temp "tempdir";
 
 my $video_url = $ARGV[0];
-my $workdir = tempdir();
+my $workdir = tempdir(UNLINK => 1);
 my $target_duration = "36000"; # 10 HOURS
 
 # retrieve metadata
