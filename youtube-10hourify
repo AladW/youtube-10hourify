@@ -5,7 +5,24 @@ use File::Temp "tempdir";
 
 my $video_url = $ARGV[0];
 my $workdir = tempdir(UNLINK => 1);
-my $target_duration = "36000"; # 10 HOURS
+
+my $num_args = $#ARGV + 1;
+
+# Default: 10 hour loop
+my $target_hours = 10;
+
+if ($num_args > 1) {
+	eval {
+		$target_hours = int($ARGV[1]);
+	} or do {
+		print "Invalid hours argument; requires a number.\n";
+		exit(1);
+	}
+}
+
+$target_hours = $target_hours * 60 * 60;
+
+my $target_duration = "${target_hours}";
 
 # retrieve metadata
 my @video_duration = split /:/, `youtube-dl --get-duration "$video_url"`
