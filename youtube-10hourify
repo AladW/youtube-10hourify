@@ -1,0 +1,28 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use File::Temp "tempdir";
+
+my $video_url = $ARGV[0];
+my $workdir = tempdir();
+my $target_duration = "36000"; # 10 HOURS
+
+# retrieve metadata
+my @video_duration = split /:/, `youtube-dl --get-duration "$video_url"`
+    or die "failed to retrieve duration: $?";
+my $video_filename = `youtube-dl --get-filename "$video_url"`
+    or die "failed to retrieve file name: $?";
+chomp $video_filename;
+
+# retrieve video
+system("youtube-dl", "--output", "$workdir/$video_filename", $video_url) == 0
+    or die "failed to retrieve video: $?";
+
+# concatenate videos
+my $loops = int($target_duration / ($video_duration[0]*60 + $video_duration[1]));
+my @maker = ("ffmpeg", "-stream_loop", "$loops",
+	     "-i", "$workdir/$video_filename",
+	     "-c", "copy", "10_HOUR_$video_filename");
+
+system(@maker) == 0
+    or die "@maker: $?";
