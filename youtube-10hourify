@@ -1,45 +1,50 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use diagnostics;
+
 use File::Temp "tempdir";
+use File::Basename "basename";
+use Data::Dumper;
 
 my $video_url = $ARGV[0];
 my $workdir = tempdir(UNLINK => 1);
-
 my $num_args = $#ARGV + 1;
 
 # Default: 10 hour loop
 my $target_hours = 10;
 
 if ($num_args > 1) {
-	eval {
-		$target_hours = int($ARGV[1]);
-	} or do {
-		print "Invalid hours argument; requires a number.\n";
-		exit(1);
-	}
+    eval {
+	$target_hours = int($ARGV[1]);
+    } or do {
+	print STDERR "Invalid hours argument; requires a number.\n";
+	exit(1);
+    }
 }
 
-$target_hours = $target_hours * 60 * 60;
-
-my $target_duration = "${target_hours}";
-
-# retrieve metadata
+# retrieve duration
 my @video_duration = split /:/, `youtube-dl --get-duration "$video_url"`
     or die "failed to retrieve duration: $?";
-my $video_filename = `youtube-dl --get-filename "$video_url"`
-    or die "failed to retrieve file name: $?";
-chomp $video_filename;
+chomp @video_duration;
+
+# TODO: seconds can be retrieved directly from --dump-json or ffprobe
+my $video_seconds = scalar(@video_duration) == 1 ? $video_duration[0]
+    : $video_duration[0]*60 + $video_duration[1];
 
 # retrieve video
-system("youtube-dl", "--output", "$workdir/$video_filename", $video_url) == 0
+system("youtube-dl", "--output", "$workdir/%(title)s-%(id)s.%(ext)s", "$video_url") == 0
     or die "failed to retrieve video: $?";
+my @video_filename = <$workdir/*>;
 
-# concatenate videos
-my $loops = int($target_duration / ($video_duration[0]*60 + $video_duration[1]));
-my @maker = ("ffmpeg", "-stream_loop", "$loops",
-	     "-i", "$workdir/$video_filename",
-	     "-c", "copy", "10_HOUR_$video_filename");
+# we expect a single video/audio file
+if (scalar(@video_filename) > 1) {
+    print STDERR "retrieved more than one file";
+    exit(2);
+}
 
+# Magic happens
+my @maker = ('ffmpeg', '-stream_loop', int($target_hours*60*60 / $video_seconds),
+	     '-i', $video_filename[0], '-c', 'copy', '10_HOUR_' . basename($video_filename[0]));
 system(@maker) == 0
     or die "@maker: $?";
