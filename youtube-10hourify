@@ -28,7 +28,7 @@ if ($num_args > 1) {
 }
 
 # retrieve video
-system("youtube-dl", "--output", "$workdir/%(title)s-%(id)s.%(ext)s", "$video_url") == 0
+system("youtube-dl", "$video_url") == 0
     or die "$argv0: failed to retrieve video: $?";
 my @video_filename = <$workdir/*>;
 
