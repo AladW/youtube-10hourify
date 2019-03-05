@@ -1,11 +1,9 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use diagnostics;
 
 use File::Temp "tempdir";
 use File::Basename "basename";
-use Data::Dumper;
 
 my $video_url = $ARGV[0];
 my $workdir = tempdir(UNLINK => 1);
@@ -23,15 +21,6 @@ if ($num_args > 1) {
     }
 }
 
-# retrieve duration
-my @video_duration = split /:/, `youtube-dl --get-duration "$video_url"`
-    or die "failed to retrieve duration: $?";
-chomp @video_duration;
-
-# TODO: seconds can be retrieved directly from --dump-json or ffprobe
-my $video_seconds = scalar(@video_duration) == 1 ? $video_duration[0]
-    : $video_duration[0]*60 + $video_duration[1];
-
 # retrieve video
 system("youtube-dl", "--output", "$workdir/%(title)s-%(id)s.%(ext)s", "$video_url") == 0
     or die "failed to retrieve video: $?";
@@ -44,7 +33,8 @@ if (scalar(@video_filename) > 1) {
 }
 
 # Magic happens
-my @maker = ('ffmpeg', '-stream_loop', int($target_hours*60*60 / $video_seconds),
-	     '-i', $video_filename[0], '-c', 'copy', '10_HOUR_' . basename($video_filename[0]));
+my @maker = ('ffmpeg', '-stream_loop', '-1', '-i', $video_filename[0],
+	     '-t', $target_hours*60*60,
+	     '-c', 'copy', '10_HOUR_' . basename($video_filename[0]));
 system(@maker) == 0
     or die "@maker: $?";
