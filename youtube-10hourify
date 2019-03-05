@@ -5,30 +5,36 @@ use warnings;
 use File::Temp "tempdir";
 use File::Basename "basename";
 
-my $video_url = $ARGV[0];
+my $argv0 = "youtube-10hourify";
 my $workdir = tempdir(UNLINK => 1);
 my $num_args = $#ARGV + 1;
 
+if ($num_args == 0) {
+    print STDERR "$argv0: requires a youtube URI\n";
+    exit(1);
+}
+
 # Default: 10 hour loop
 my $target_hours = 10;
+my $video_url = $ARGV[0];
 
 if ($num_args > 1) {
     eval {
 	$target_hours = int($ARGV[1]);
     } or do {
-	print STDERR "Invalid hours argument; requires a number.\n";
-	exit(1);
+	print STDERR "$argv0: invalid hours argument; requires a number.\n";
+	exit(22);
     }
 }
 
 # retrieve video
 system("youtube-dl", "--output", "$workdir/%(title)s-%(id)s.%(ext)s", "$video_url") == 0
-    or die "failed to retrieve video: $?";
+    or die "$argv0: failed to retrieve video: $?";
 my @video_filename = <$workdir/*>;
 
 # we expect a single video/audio file
 if (scalar(@video_filename) > 1) {
-    print STDERR "retrieved more than one file";
+    print STDERR "$argv0: retrieved more than one file";
     exit(2);
 }
 
